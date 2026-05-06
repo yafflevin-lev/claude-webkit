@@ -1,0 +1,105 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand colors */
+  --color-navy-50: oklch(97% 0.012 245);
+  --color-navy-100: oklch(93% 0.025 245);
+  --color-navy-200: oklch(87% 0.04 245);
+  --color-navy-300: oklch(75% 0.07 245);
+  --color-navy-400: oklch(58% 0.10 245);
+  --color-navy-500: oklch(45% 0.12 245);
+  --color-navy-600: oklch(37% 0.12 245);
+  --color-navy-700: oklch(30% 0.11 245);
+  --color-navy-800: oklch(23% 0.09 245);
+  --color-navy-900: oklch(17% 0.07 245);
+
+  --color-amber-50: oklch(98% 0.02 80);
+  --color-amber-100: oklch(95% 0.05 80);
+  --color-amber-200: oklch(90% 0.09 75);
+  --color-amber-300: oklch(84% 0.13 72);
+  --color-amber-400: oklch(78% 0.16 68);
+  --color-amber-500: oklch(70% 0.17 65);
+  --color-amber-600: oklch(60% 0.16 62);
+  --color-amber-700: oklch(50% 0.14 60);
+
+  --color-emerald-50: oklch(97% 0.02 160);
+  --color-emerald-100: oklch(93% 0.05 160);
+  --color-emerald-500: oklch(60% 0.15 160);
+  --color-emerald-600: oklch(52% 0.15 160);
+  --color-emerald-700: oklch(44% 0.13 160);
+
+  --color-slate-50: oklch(98% 0.005 245);
+  --color-slate-100: oklch(96% 0.008 245);
+  --color-slate-200: oklch(92% 0.010 245);
+  --color-slate-300: oklch(84% 0.012 245);
+  --color-slate-400: oklch(68% 0.015 245);
+  --color-slate-500: oklch(54% 0.015 245);
+  --color-slate-600: oklch(44% 0.015 245);
+  --color-slate-700: oklch(35% 0.012 245);
+  --color-slate-800: oklch(26% 0.010 245);
+  --color-slate-900: oklch(18% 0.008 245);
+
+  --color-red-500: oklch(58% 0.22 25);
+  --color-red-100: oklch(94% 0.04 25);
+
+  /* Fonts */
+  --font-heading: var(--font-plus-jakarta);
+  --font-body: var(--font-manrope);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background-color: oklch(98% 0.008 245);
+  color: oklch(18% 0.008 245);
+  font-family: var(--font-manrope, system-ui, sans-serif);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-plus-jakarta, system-ui, sans-serif);
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+/* Pipeline glow ring for active step */
+.pipeline-step-active {
+  box-shadow: 0 0 0 4px oklch(70% 0.17 65 / 0.25), 0 0 0 8px oklch(70% 0.17 65 / 0.10);
+}
+
+.pipeline-step-complete {
+  box-shadow: 0 0 0 3px oklch(30% 0.11 245 / 0.15);
+}
+
+/* Smooth transitions */
+.transition-base {
+  transition: all 150ms cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid oklch(45% 0.12 245);
+  outline-offset: 2px;
+}
+
+/* Safe area for mobile notches */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
