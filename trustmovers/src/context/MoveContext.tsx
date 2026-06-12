@@ -14,7 +14,8 @@ export type MoveType = "Local" | "Long Distance";
 export type MoveSize = "Studio" | "1 Bedroom" | "2 Bedroom" | "3+ Bedrooms";
 export type TimeWindow = "Morning" | "Afternoon" | "Evening" | "ASAP";
 export type PhotoLabel = "Before" | "After" | "Note";
-export type NotificationType = "status" | "estimate" | "photo" | "system";
+export type NotificationType = "status" | "estimate" | "photo" | "payment" | "system";
+export type PaymentStatus = "unpaid" | "processing" | "paid";
 
 export interface NotificationEntry {
   id: string;
@@ -59,6 +60,8 @@ export interface MoveData {
   estimateApprovedAt: string | null;
   moveHistory: MoveHistoryEntry[];
   hasSubmitted: boolean;
+  paymentStatus: PaymentStatus;
+  paymentPaidAt: string | null;
 }
 
 const DEMO_HISTORY: MoveHistoryEntry[] = [
@@ -99,6 +102,8 @@ const DEFAULT_STATE: MoveData = {
   estimateApprovedAt: null,
   moveHistory: DEMO_HISTORY,
   hasSubmitted: false,
+  paymentStatus: "unpaid",
+  paymentPaidAt: null,
 };
 
 const STORAGE_KEY = "trustmovers_demo_state";
@@ -119,6 +124,7 @@ interface MoveContextValue {
   removePhoto: (id: string) => void;
   markRead: (id: string) => void;
   markAllRead: () => void;
+  processPayment: () => void;
 }
 
 const MoveContext = createContext<MoveContextValue | null>(null);
@@ -201,6 +207,8 @@ export function MoveProvider({ children }: { children: ReactNode }) {
         estimateApproved: false,
         estimateApprovedAt: null,
         hasSubmitted: true,
+        paymentStatus: "unpaid" as PaymentStatus,
+        paymentPaidAt: null,
       };
       setMove((prev) => {
         const next = { ...prev, ...filled };
@@ -283,6 +291,26 @@ export function MoveProvider({ children }: { children: ReactNode }) {
     });
   }, [persist]);
 
+  const processPayment = useCallback(() => {
+    setMove((prev) => {
+      const updated = { ...prev, paymentStatus: "processing" as PaymentStatus };
+      persist(updated);
+      return updated;
+    });
+    setTimeout(() => {
+      const paidAt = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      setMove((prev) => {
+        const updated = { ...prev, paymentStatus: "paid" as PaymentStatus, paymentPaidAt: paidAt };
+        persist(updated);
+        return updated;
+      });
+      setNotifications((n) => [
+        makeNotification("payment", "Payment Received", "Balance of $430 processed. Your receipt is saved."),
+        ...n,
+      ]);
+    }, 2000);
+  }, [persist]);
+
   const markRead = useCallback((id: string) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
@@ -339,6 +367,7 @@ export function MoveProvider({ children }: { children: ReactNode }) {
         removePhoto,
         markRead,
         markAllRead,
+        processPayment,
       }}
     >
       {children}

@@ -21,6 +21,8 @@ import {
   Weight,
   Clock,
   Camera,
+  Receipt,
+  CreditCard,
 } from "lucide-react";
 
 function Toast({ message, onDismiss }: { message: string; onDismiss: () => void }) {
@@ -91,6 +93,7 @@ function HistoryCard({
 
 export default function SummaryPage() {
   const { move, photos } = useMove();
+  const paid = move.paymentStatus === "paid";
   const router = useRouter();
   const [toast, setToast] = useState<string | null>(null);
   const [emailInput, setEmailInput] = useState("");
@@ -302,6 +305,53 @@ export default function SummaryPage() {
             </div>
           </div>
         )}
+
+        {/* Payment receipt */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+            <Receipt className="w-4 h-4 text-slate-400" />
+            <p className="text-sm font-semibold text-navy-900">Payment</p>
+            {paid ? (
+              <span className="ml-auto flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs font-semibold px-2 py-0.5 rounded-full border border-emerald-200">
+                <CheckCircle2 className="w-3 h-3" />
+                Paid in full
+              </span>
+            ) : (
+              <span className="ml-auto flex items-center gap-1 bg-amber-50 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full border border-amber-200">
+                Balance due
+              </span>
+            )}
+          </div>
+          <div className="px-4 py-3 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">Deposit</span>
+              <span className="font-medium text-emerald-700">$150 paid</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">Balance</span>
+              <span className={`font-medium ${paid ? "text-emerald-700" : "text-slate-800"}`}>
+                {paid ? "$430 paid" : "$430 due"}
+              </span>
+            </div>
+            <div className="pt-2 border-t border-slate-100 flex justify-between">
+              <span className="text-sm font-bold text-navy-900">Total</span>
+              <span className="text-sm font-bold text-navy-900">$580</span>
+            </div>
+            {paid && move.paymentPaidAt && (
+              <div className="flex items-center gap-1.5 pt-1">
+                <CreditCard className="w-3.5 h-3.5 text-slate-400" />
+                <p className="text-xs text-slate-500">
+                  Visa •••• 4242 · {move.paymentPaidAt}
+                </p>
+              </div>
+            )}
+            {!paid && (
+              <p className="text-xs text-slate-400 pt-1">
+                Visit your move status page to pay the remaining balance.
+              </p>
+            )}
+          </div>
+        </div>
 
         {/* Settling-in tips */}
         <div className="bg-navy-50 rounded-2xl border border-navy-100 p-4">
