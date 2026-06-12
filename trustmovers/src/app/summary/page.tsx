@@ -20,6 +20,7 @@ import {
   Calendar,
   Weight,
   Clock,
+  Camera,
 } from "lucide-react";
 
 function Toast({ message, onDismiss }: { message: string; onDismiss: () => void }) {
@@ -89,7 +90,7 @@ function HistoryCard({
 }
 
 export default function SummaryPage() {
-  const { move } = useMove();
+  const { move, photos } = useMove();
   const router = useRouter();
   const [toast, setToast] = useState<string | null>(null);
   const [emailInput, setEmailInput] = useState("");
@@ -268,6 +269,39 @@ export default function SummaryPage() {
             ))}
           </ul>
         </div>
+
+        {/* Crew photos */}
+        {photos.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+              <Camera className="w-4 h-4 text-slate-400" />
+              <p className="text-sm font-semibold text-navy-900">Crew Photos</p>
+              <span className="text-xs text-slate-400 ml-auto">{photos.length} photo{photos.length !== 1 ? "s" : ""}</span>
+            </div>
+            <div className="p-4 grid grid-cols-3 gap-2">
+              {photos.map((p) => (
+                <div key={p.id} className="space-y-1">
+                  <div className="relative aspect-square rounded-xl overflow-hidden bg-slate-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.dataUrl} alt={p.label} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <span className="absolute bottom-1 left-1.5 text-white text-[10px] font-semibold">
+                      {p.label}
+                    </span>
+                  </div>
+                  <a
+                    href={p.dataUrl}
+                    download={`move-photo-${p.label.toLowerCase()}-${p.id}.jpg`}
+                    className="flex items-center justify-center gap-1 text-[10px] text-navy-600 hover:text-navy-800 transition-colors"
+                  >
+                    <Download className="w-3 h-3" />
+                    Save
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Settling-in tips */}
         <div className="bg-navy-50 rounded-2xl border border-navy-100 p-4">
