@@ -24,6 +24,7 @@ import {
   Receipt,
   Phone,
   MessageCircle,
+  Signal,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { PaymentSheet } from "@/components/PaymentSheet";
@@ -641,6 +642,38 @@ function CrewPhotos() {
   );
 }
 
+// ---------- Queue Position Card ----------
+function QueuePositionCard() {
+  const { queuePosition } = useMove();
+  if (queuePosition === 0) return null;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+      className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 flex items-center gap-3"
+    >
+      <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+        <Signal className="w-4 h-4 text-amber-600" />
+      </div>
+      <div className="flex-1">
+        <p className="text-sm font-semibold text-navy-900">
+          {queuePosition === 1 ? "You're up next!" : `${queuePosition} jobs ahead of you`}
+        </p>
+        <p className="text-xs text-slate-500 mt-0.5">
+          {queuePosition === 1
+            ? "Crew is finishing their current job. Get ready!"
+            : "We'll notify you as the crew gets closer."}
+        </p>
+      </div>
+      <span className="text-2xl font-heading font-bold text-amber-500 flex-shrink-0">
+        {queuePosition}
+      </span>
+    </motion.div>
+  );
+}
+
 // ---------- Main Status Page ----------
 export default function StatusPage() {
   const { move, setStatus } = useMove();
@@ -705,6 +738,9 @@ export default function StatusPage() {
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
           <Pipeline status={move.status} />
         </div>
+
+        {/* Queue position — only before crew is on the way */}
+        {move.status < 3 && <QueuePositionCard />}
 
         {/* Status summary card */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">

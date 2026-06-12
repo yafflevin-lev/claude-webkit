@@ -17,6 +17,16 @@ export type PhotoLabel = "Before" | "After" | "Note";
 export type NotificationType = "status" | "estimate" | "photo" | "payment" | "system";
 export type PaymentStatus = "unpaid" | "processing" | "paid";
 
+export interface QueueEntry {
+  id: string;
+  clientName: string;
+  moveSize: MoveSize;
+  timeWindow: string;
+  fromAddress: string;
+  completed: boolean;
+  isLive?: boolean;
+}
+
 export interface NotificationEntry {
   id: string;
   type: NotificationType;
@@ -114,6 +124,14 @@ const DEFAULT_STATE: MoveData = {
 
 const STORAGE_KEY = "trustmovers_demo_state";
 
+const INITIAL_QUEUE: QueueEntry[] = [
+  { id: "q1", clientName: "Martinez Family", moveSize: "Studio",       timeWindow: "8:00 AM",  fromAddress: "41 Birch Ln",       completed: true },
+  { id: "q2", clientName: "Rivera Family",   moveSize: "2 Bedroom",    timeWindow: "10:30 AM", fromAddress: "77 Oak Glen Ct",    completed: false },
+  { id: "q3", clientName: "Chen Household",  moveSize: "1 Bedroom",    timeWindow: "1:00 PM",  fromAddress: "204 Cedar Ave",     completed: false },
+  { id: "q4", clientName: "",               moveSize: "1 Bedroom",    timeWindow: "3:30 PM",  fromAddress: "",                  completed: false, isLive: true },
+  { id: "q5", clientName: "Thompson Move",   moveSize: "3+ Bedrooms",  timeWindow: "5:00 PM",  fromAddress: "88 Willowbrook Dr", completed: false },
+];
+
 interface MoveContextValue {
   move: MoveData;
   photos: PhotoEntry[];
@@ -132,6 +150,9 @@ interface MoveContextValue {
   markAllRead: () => void;
   processPayment: () => void;
   submitRating: (rating: number, comment: string) => void;
+  dailyQueue: QueueEntry[];
+  queuePosition: number;
+  markQueueJobDone: (id: string) => void;
 }
 
 const MoveContext = createContext<MoveContextValue | null>(null);
@@ -162,9 +183,10 @@ function makeNotification(
 export function MoveProvider({ children }: { children: ReactNode }) {
   const [move, setMove] = useState<MoveData>(DEFAULT_STATE);
   const [hydrated, setHydrated] = useState(false);
-  // Photos and notifications are kept in memory only
+  // Photos, notifications, and queue are in-memory only
   const [photos, setPhotos] = useState<PhotoEntry[]>([]);
   const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
+  const [dailyQueue, setDailyQueue] = useState<QueueEntry[]>(INITIAL_QUEUE);
 
   useEffect(() => {
     try {
@@ -342,6 +364,27 @@ export function MoveProvider({ children }: { children: ReactNode }) {
     [persist]
   );
 
+  const markQueueJobDone = useCallback((id: string) => {
+    setDailyQueue((prev) => {
+      const updated = prev.map((j) => j.id === id ? { ...j, completed: true } : j);
+      // Check if the live customer moved up to next position
+      const liveIdx = updated.findIndex((j) => j.isLive);
+      const newPosition = updated.slice(0, liveIdx).filter((j) => !j.completed).length;
+      if (newPosition === 0) {
+        setNotifications((n) => [
+          makeNotification("status", "You're up next!", "The crew is wrapping up their current job and heading your way soon."),
+          ...n,
+        ]);
+      } else if (newPosition === 1) {
+        setNotifications((n) => [
+          makeNotification("status", "One job ahead of you", "Your crew is getting closer. Get ready!"),
+          ...n,
+        ]);
+      }
+      return updated;
+    });
+  }, []);
+
   const markRead = useCallback((id: string) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
@@ -374,11 +417,16 @@ export function MoveProvider({ children }: { children: ReactNode }) {
     setMove(DEFAULT_STATE);
     setPhotos([]);
     setNotifications([]);
+    setDailyQueue(INITIAL_QUEUE);
   }, []);
 
   if (!hydrated) return null;
 
   const unreadCount = notifications.filter((n) => !n.read).length;
+  const liveIdx = dailyQueue.findIndex((j) => j.isLive);
+  const queuePosition = liveIdx >= 0
+    ? dailyQueue.slice(0, liveIdx).filter((j) => !j.completed).length
+    : 0;
 
   return (
     <MoveContext.Provider
@@ -400,6 +448,9 @@ export function MoveProvider({ children }: { children: ReactNode }) {
         markAllRead,
         processPayment,
         submitRating,
+        dailyQueue,
+        queuePosition,
+        markQueueJobDone,
       }}
     >
       {children}

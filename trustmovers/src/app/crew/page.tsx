@@ -2,7 +2,7 @@
 
 import { useRef, useState, useCallback } from "react";
 import { useMove } from "@/context/MoveContext";
-import type { PhotoLabel } from "@/context/MoveContext";
+import type { PhotoLabel, QueueEntry } from "@/context/MoveContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Truck,
@@ -18,6 +18,8 @@ import {
   X,
   ImagePlus,
   Trash2,
+  Signal,
+  ListChecks,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 
@@ -63,6 +65,121 @@ const STATIC_JOB = {
   stairs: "No stairs",
   estimatedTime: "~3–5 hrs",
 };
+
+// ---------- Today's Queue Strip ----------
+function QueueStrip() {
+  const { dailyQueue, markQueueJobDone, move } = useMove();
+  const [tapping, setTapping] = useState<string | null>(null);
+
+  const done = dailyQueue.filter((j) => j.completed).length;
+  const total = dailyQueue.length;
+  const currentIdx = dailyQueue.findIndex((j) => !j.completed);
+
+  function handleTap(entry: QueueEntry) {
+    if (entry.completed || entry.isLive) return;
+    if (entry.id !== dailyQueue[currentIdx]?.id) return; // only current job
+    setTapping(entry.id);
+    setTimeout(() => {
+      markQueueJobDone(entry.id);
+      setTapping(null);
+    }, 600);
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ListChecks className="w-4 h-4 text-slate-400" />
+          <p className="text-sm font-semibold text-navy-900">Today's Queue</p>
+        </div>
+        <span className="text-xs text-slate-500 font-medium">
+          {done}/{total} done
+        </span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="mx-4 mb-3 h-1 bg-slate-100 rounded-full overflow-hidden">
+        <motion.div
+          className="h-full bg-emerald-500 rounded-full"
+          initial={false}
+          animate={{ width: `${(done / total) * 100}%` }}
+          transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+        />
+      </div>
+
+      {/* Scrollable job pills */}
+      <div className="overflow-x-auto pb-3 px-4">
+        <div className="flex gap-2" style={{ width: "max-content" }}>
+          {dailyQueue.map((entry, i) => {
+            const isCurrent = i === currentIdx;
+            const isLive = !!entry.isLive;
+            const isTapping = tapping === entry.id;
+            const clientLabel = isLive
+              ? (move.clientName || "Your customer").split(" ")[0]
+              : entry.clientName.split(" ")[0];
+
+            return (
+              <motion.button
+                key={entry.id}
+                onClick={() => handleTap(entry)}
+                disabled={entry.completed || isLive || !isCurrent}
+                animate={isTapping ? { scale: 0.92 } : { scale: 1 }}
+                transition={{ duration: 0.15 }}
+                className={`flex flex-col items-center gap-1 px-3 py-2.5 rounded-xl border min-w-[76px] transition-all duration-200 ${
+                  entry.completed
+                    ? "bg-emerald-50 border-emerald-200 opacity-60"
+                    : isCurrent && !isLive
+                    ? "bg-amber-500 border-amber-500 cursor-pointer shadow-md shadow-amber-500/25"
+                    : isLive
+                    ? "bg-navy-900 border-navy-900"
+                    : "bg-slate-50 border-slate-200 opacity-50"
+                }`}
+              >
+                {/* Icon row */}
+                <div className="flex items-center gap-1">
+                  <span className={`text-[10px] font-bold ${
+                    entry.completed ? "text-emerald-600" :
+                    isCurrent && !isLive ? "text-white" :
+                    isLive ? "text-navy-300" : "text-slate-400"
+                  }`}>#{i + 1}</span>
+                  {entry.completed && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
+                  {isCurrent && !isLive && !isTapping && <span className="text-[9px] font-bold text-amber-100 bg-amber-600 px-1 rounded">NOW</span>}
+                  {isTapping && <CheckCircle2 className="w-3 h-3 text-white" />}
+                  {isLive && <Signal className="w-3 h-3 text-amber-400" />}
+                </div>
+                {/* Name */}
+                <p className={`text-xs font-semibold leading-tight text-center max-w-[64px] truncate ${
+                  entry.completed ? "text-emerald-700" :
+                  isCurrent && !isLive ? "text-white" :
+                  isLive ? "text-white" : "text-slate-500"
+                }`}>
+                  {clientLabel}
+                </p>
+                {/* Time */}
+                <p className={`text-[10px] leading-tight ${
+                  entry.completed ? "text-emerald-500" :
+                  isCurrent && !isLive ? "text-amber-100" :
+                  isLive ? "text-navy-400" : "text-slate-400"
+                }`}>
+                  {entry.timeWindow}
+                </p>
+              </motion.button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Helper text */}
+      <div className="px-4 pb-3">
+        <p className="text-xs text-slate-400">
+          {currentIdx >= 0 && !dailyQueue[currentIdx]?.isLive
+            ? `Tap current job to mark done — client dashboard updates instantly`
+            : "Live customer job — advance status with the button below"}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function StatusBadge({ status }: { status: number }) {
   return (
@@ -427,6 +544,9 @@ export default function CrewPage() {
       </header>
 
       <div className="px-4 py-5 max-w-lg mx-auto space-y-4">
+        {/* Day queue */}
+        <QueueStrip />
+
         {/* Active jobs header */}
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-700">
@@ -434,7 +554,7 @@ export default function CrewPage() {
           </h2>
           <div className="flex items-center gap-1 text-xs text-amber-600 font-medium">
             <AlertCircle className="w-3.5 h-3.5" />
-            Update status to sync client view
+            Advance status to sync client view
           </div>
         </div>
 
