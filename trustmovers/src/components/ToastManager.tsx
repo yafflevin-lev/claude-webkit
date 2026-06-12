@@ -49,7 +49,7 @@ export function ToastManager() {
       aria-live="polite"
       aria-label="Notifications"
       className="fixed top-4 right-4 z-[60] flex flex-col gap-2 pointer-events-none"
-      style={{ maxWidth: "calc(100vw - 2rem)" }}
+      style={{ maxWidth: "calc(100vw - 2rem)", left: "auto" }}
     >
       <AnimatePresence mode="popLayout">
         {visible.map((toast) => (
@@ -60,7 +60,7 @@ export function ToastManager() {
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 64, scale: 0.95 }}
             transition={{ duration: 0.28, ease: [0.25, 1, 0.5, 1] }}
-            className="pointer-events-auto bg-white rounded-2xl shadow-lg border border-slate-200 px-4 py-3 flex items-start gap-3 w-72"
+            className="pointer-events-auto bg-white rounded-2xl shadow-lg border border-slate-200 px-4 py-3 flex items-start gap-3 w-64 sm:w-72"
           >
             <div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center mt-0.5 flex-shrink-0">
               <ToastIcon type={toast.type} />

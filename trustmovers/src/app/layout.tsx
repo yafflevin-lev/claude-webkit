@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Manrope } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
@@ -16,6 +16,13 @@ const manrope = Manrope({
   display: "swap",
   weight: ["400", "500", "600", "700"],
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 export const metadata: Metadata = {
   title: "TrustMovers — For One Stop Moving & Storage",
