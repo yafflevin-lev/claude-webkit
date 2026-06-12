@@ -72,6 +72,8 @@ export interface MoveData {
   hasSubmitted: boolean;
   paymentStatus: PaymentStatus;
   paymentPaidAt: string | null;
+  depositPaid: boolean;
+  depositPaidAt: string | null;
   hasRated: boolean;
   rating: number | null;
   ratingComment: string;
@@ -117,6 +119,8 @@ const DEFAULT_STATE: MoveData = {
   hasSubmitted: false,
   paymentStatus: "unpaid",
   paymentPaidAt: null,
+  depositPaid: false,
+  depositPaidAt: null,
   hasRated: false,
   rating: null,
   ratingComment: "",
@@ -149,6 +153,7 @@ interface MoveContextValue {
   markRead: (id: string) => void;
   markAllRead: () => void;
   processPayment: () => void;
+  payDeposit: () => void;
   submitRating: (rating: number, comment: string) => void;
   dailyQueue: QueueEntry[];
   queuePosition: number;
@@ -238,6 +243,8 @@ export function MoveProvider({ children }: { children: ReactNode }) {
         hasSubmitted: true,
         paymentStatus: "unpaid" as PaymentStatus,
         paymentPaidAt: null,
+        depositPaid: false,
+        depositPaidAt: null,
         hasRated: false,
         rating: null,
         ratingComment: "",
@@ -341,6 +348,24 @@ export function MoveProvider({ children }: { children: ReactNode }) {
         ...n,
       ]);
     }, 2000);
+  }, [persist]);
+
+  const payDeposit = useCallback(() => {
+    const paidAt = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    setMove((prev) => {
+      const updated = {
+        ...prev,
+        depositPaid: true,
+        depositPaidAt: paidAt,
+        status: 1 as MoveStatus,
+      };
+      persist(updated);
+      return updated;
+    });
+    setNotifications((n) => [
+      makeNotification("payment", "Deposit Received", "Your $150 deposit is confirmed. Your move date is locked in!"),
+      ...n,
+    ]);
   }, [persist]);
 
   const submitRating = useCallback(
@@ -447,6 +472,7 @@ export function MoveProvider({ children }: { children: ReactNode }) {
         markRead,
         markAllRead,
         processPayment,
+        payDeposit,
         submitRating,
         dailyQueue,
         queuePosition,

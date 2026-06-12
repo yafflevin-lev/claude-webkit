@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { PaymentSheet } from "@/components/PaymentSheet";
+import { DepositSheet } from "@/components/DepositSheet";
 import { RatingGate } from "@/components/RatingGate";
 
 const PIPELINE_STEPS = [
@@ -351,6 +352,67 @@ function MovePrepSection({ moveSize }: { moveSize: string }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// ---------- Deposit Card ----------
+function DepositCard() {
+  const { move } = useMove();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const paid = move.depositPaid;
+
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+        className={`rounded-2xl border shadow-sm overflow-hidden ${
+          paid ? "bg-white border-slate-200" : "bg-navy-900 border-navy-800"
+        }`}
+      >
+        {paid ? (
+          <div className="px-4 py-4 flex items-center gap-3">
+            <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-navy-900">Deposit paid — $150</p>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Move date confirmed{move.depositPaidAt ? ` · ${move.depositPaidAt}` : ""}
+              </p>
+            </div>
+            <span className="text-xs font-semibold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200">
+              Confirmed
+            </span>
+          </div>
+        ) : (
+          <div className="px-4 py-4">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <p className="text-white font-semibold text-sm">Secure your move date</p>
+                <p className="text-navy-300 text-xs mt-0.5">A $150 deposit locks in your crew and time slot.</p>
+              </div>
+              <span className="text-amber-400 font-heading font-bold text-xl">$150</span>
+            </div>
+            <button
+              onClick={() => setSheetOpen(true)}
+              className="w-full bg-amber-500 hover:bg-amber-400 active:scale-[0.98] text-white font-semibold text-sm py-3 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2"
+            >
+              <CreditCard className="w-4 h-4" />
+              Pay $150 Deposit
+            </button>
+            <p className="text-navy-400 text-xs text-center mt-2">
+              Remaining $430 due on move day · Full refund 48hrs before
+            </p>
+          </div>
+        )}
+      </motion.div>
+
+      <AnimatePresence>
+        {sheetOpen && <DepositSheet onClose={() => setSheetOpen(false)} />}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -741,6 +803,9 @@ export default function StatusPage() {
 
         {/* Queue position — only before crew is on the way */}
         {move.status < 3 && <QueuePositionCard />}
+
+        {/* Deposit card — prominent at status 0, compact confirmed state at status 1 */}
+        {move.status <= 1 && <DepositCard />}
 
         {/* Status summary card */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
