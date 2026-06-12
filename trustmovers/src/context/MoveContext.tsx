@@ -13,6 +13,15 @@ export type MoveStatus = 0 | 1 | 2 | 3 | 4 | 5;
 export type MoveType = "Local" | "Long Distance";
 export type MoveSize = "Studio" | "1 Bedroom" | "2 Bedroom" | "3+ Bedrooms";
 export type TimeWindow = "Morning" | "Afternoon" | "Evening" | "ASAP";
+export type PhotoLabel = "Before" | "After" | "Note";
+
+export interface PhotoEntry {
+  id: string;
+  dataUrl: string;
+  label: PhotoLabel;
+  caption: string;
+  uploadedAt: string;
+}
 
 export interface MoveHistoryEntry {
   id: string;
@@ -86,6 +95,7 @@ const STORAGE_KEY = "trustmovers_demo_state";
 
 interface MoveContextValue {
   move: MoveData;
+  photos: PhotoEntry[];
   updateMove: (partial: Partial<MoveData>) => void;
   submitForm: (formData: Partial<MoveData>) => void;
   advanceStatus: () => void;
@@ -93,6 +103,8 @@ interface MoveContextValue {
   approveEstimate: () => void;
   completeMove: () => void;
   resetDemo: () => void;
+  addPhoto: (photo: Omit<PhotoEntry, "id" | "uploadedAt">) => void;
+  removePhoto: (id: string) => void;
 }
 
 const MoveContext = createContext<MoveContextValue | null>(null);
@@ -100,6 +112,8 @@ const MoveContext = createContext<MoveContextValue | null>(null);
 export function MoveProvider({ children }: { children: ReactNode }) {
   const [move, setMove] = useState<MoveData>(DEFAULT_STATE);
   const [hydrated, setHydrated] = useState(false);
+  // Photos are kept in memory only — base64 data is too large for localStorage
+  const [photos, setPhotos] = useState<PhotoEntry[]>([]);
 
   useEffect(() => {
     try {
@@ -223,6 +237,19 @@ export function MoveProvider({ children }: { children: ReactNode }) {
     });
   }, [persist]);
 
+  const addPhoto = useCallback((photo: Omit<PhotoEntry, "id" | "uploadedAt">) => {
+    const entry: PhotoEntry = {
+      ...photo,
+      id: `photo-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      uploadedAt: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+    };
+    setPhotos((prev) => [...prev, entry]);
+  }, []);
+
+  const removePhoto = useCallback((id: string) => {
+    setPhotos((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
   const resetDemo = useCallback(() => {
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -230,6 +257,7 @@ export function MoveProvider({ children }: { children: ReactNode }) {
       // ignore
     }
     setMove(DEFAULT_STATE);
+    setPhotos([]);
   }, []);
 
   if (!hydrated) return null;
@@ -238,6 +266,7 @@ export function MoveProvider({ children }: { children: ReactNode }) {
     <MoveContext.Provider
       value={{
         move,
+        photos,
         updateMove,
         submitForm,
         advanceStatus,
@@ -245,6 +274,8 @@ export function MoveProvider({ children }: { children: ReactNode }) {
         approveEstimate,
         completeMove,
         resetDemo,
+        addPhoto,
+        removePhoto,
       }}
     >
       {children}
