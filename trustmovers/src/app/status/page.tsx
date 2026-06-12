@@ -19,7 +19,9 @@ import {
   SlidersHorizontal,
   BadgeCheck,
   ArrowRight,
+  Camera,
 } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const PIPELINE_STEPS = [
   { label: "Scheduled", icon: Clock },
@@ -437,6 +439,103 @@ function DemoControls() {
   );
 }
 
+// ---------- Crew Photos ----------
+function CrewPhotos() {
+  const { photos } = useMove();
+  const [lightbox, setLightbox] = useState<string | null>(null);
+
+  if (photos.length === 0) return null;
+
+  const before = photos.filter((p) => p.label === "Before");
+  const after = photos.filter((p) => p.label === "After");
+  const notes = photos.filter((p) => p.label === "Note");
+
+  const groups = [
+    { label: "Before", items: before },
+    { label: "After", items: after },
+    { label: "Notes", items: notes },
+  ].filter((g) => g.items.length > 0);
+
+  return (
+    <>
+      <motion.div
+        key="photos"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
+        className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+      >
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+          <Camera className="w-4 h-4 text-slate-400" />
+          <p className="text-sm font-semibold text-navy-900">
+            Crew Photos
+          </p>
+          <span className="text-xs text-slate-400 ml-auto">{photos.length} photo{photos.length !== 1 ? "s" : ""}</span>
+        </div>
+
+        <div className="px-4 py-3 space-y-4">
+          {groups.map((group) => (
+            <div key={group.label}>
+              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                {group.label}
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                {group.items.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setLightbox(p.dataUrl)}
+                    className="relative aspect-square rounded-xl overflow-hidden bg-slate-100 cursor-pointer"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={p.dataUrl}
+                      alt={p.label}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/50 to-transparent px-1.5 py-1">
+                      <p className="text-white text-[9px]">{p.uploadedAt}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightbox && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+            onClick={() => setLightbox(null)}
+          >
+            <button
+              className="absolute top-4 right-4 text-white/70 hover:text-white cursor-pointer"
+              aria-label="Close"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <motion.img
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.92 }}
+              transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+              src={lightbox}
+              alt="Full size"
+              className="max-w-full max-h-full rounded-xl object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
 // ---------- Main Status Page ----------
 export default function StatusPage() {
   const { move, setStatus } = useMove();
@@ -461,6 +560,9 @@ export default function StatusPage() {
           <a href="/" className="text-navy-300 text-xs hover:text-white transition-colors">
             ← Edit booking
           </a>
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
         </div>
 
         <div className="flex items-start justify-between">
@@ -575,6 +677,11 @@ export default function StatusPage() {
               <EstimateCard />
             </motion.div>
           )}
+        </AnimatePresence>
+
+        {/* Crew photos — show when On The Way or later, if crew uploaded any */}
+        <AnimatePresence>
+          {move.status >= 3 && <CrewPhotos />}
         </AnimatePresence>
 
         {/* Completion card */}

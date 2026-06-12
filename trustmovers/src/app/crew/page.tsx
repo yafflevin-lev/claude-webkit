@@ -1,7 +1,8 @@
 "use client";
 
+import { useRef, useState, useCallback } from "react";
 import { useMove } from "@/context/MoveContext";
-import type { MoveStatus } from "@/context/MoveContext";
+import type { PhotoLabel } from "@/context/MoveContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Truck,
@@ -13,7 +14,12 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronRight,
+  Camera,
+  X,
+  ImagePlus,
+  Trash2,
 } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 
 const PIPELINE_STEPS = [
   "Scheduled",
@@ -65,6 +71,165 @@ function StatusBadge({ status }: { status: number }) {
     >
       {PIPELINE_STEPS[status]}
     </span>
+  );
+}
+
+// ---------- Photo Panel (live job only) ----------
+function PhotoPanel() {
+  const { photos, addPhoto, removePhoto } = useMove();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingLabel, setPendingLabel] = useState<PhotoLabel>("Before");
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+
+  const handleFiles = useCallback(
+    (files: FileList | null) => {
+      if (!files || files.length === 0) return;
+      setUploading(true);
+      Array.from(files).forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const dataUrl = e.target?.result as string;
+          addPhoto({ dataUrl, label: pendingLabel, caption: "" });
+        };
+        reader.readAsDataURL(file);
+      });
+      setTimeout(() => setUploading(false), 400);
+    },
+    [addPhoto, pendingLabel]
+  );
+
+  return (
+    <>
+      <div className="border-t border-slate-100 px-4 pt-3 pb-4">
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+            Job Photos ({photos.length})
+          </p>
+          <div className="flex items-center gap-1.5">
+            {(["Before", "After", "Note"] as PhotoLabel[]).map((l) => (
+              <button
+                key={l}
+                onClick={() => setPendingLabel(l)}
+                className={`text-xs font-medium px-2.5 py-1 rounded-full border transition-all cursor-pointer ${
+                  pendingLabel === l
+                    ? "bg-navy-900 border-navy-900 text-white"
+                    : "bg-white border-slate-200 text-slate-600 hover:border-navy-300"
+                }`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Photo grid */}
+        {photos.length > 0 && (
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <AnimatePresence>
+              {photos.map((p) => (
+                <motion.div
+                  key={p.id}
+                  initial={{ opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.85 }}
+                  transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                  className="relative aspect-square rounded-xl overflow-hidden bg-slate-100 cursor-pointer group"
+                  onClick={() => setLightbox(p.dataUrl)}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={p.dataUrl}
+                    alt={p.label}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                  <span className="absolute bottom-1 left-1.5 text-white text-[10px] font-semibold">
+                    {p.label}
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removePhoto(p.id);
+                    }}
+                    className="absolute top-1 right-1 bg-black/50 hover:bg-black/80 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    aria-label="Remove photo"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                  <span className="absolute top-1 left-1.5 text-white/70 text-[9px]">
+                    {p.uploadedAt}
+                  </span>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* Upload button */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          capture="environment"
+          className="sr-only"
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploading}
+          className="w-full border-2 border-dashed border-slate-200 hover:border-navy-300 rounded-xl py-3 flex items-center justify-center gap-2 text-sm font-medium text-slate-500 hover:text-navy-700 transition-all cursor-pointer disabled:opacity-50"
+        >
+          {uploading ? (
+            <>
+              <ImagePlus className="w-4 h-4 animate-pulse" />
+              Adding…
+            </>
+          ) : (
+            <>
+              <Camera className="w-4 h-4" />
+              Add {pendingLabel} Photo
+            </>
+          )}
+        </button>
+        <p className="text-center text-xs text-slate-400 mt-1.5">
+          Photos are visible to the client on their status page
+        </p>
+      </div>
+
+      {/* Lightbox */}
+      <AnimatePresence>
+        {lightbox && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+              onClick={() => setLightbox(null)}
+            >
+              <button
+                className="absolute top-4 right-4 text-white/70 hover:text-white cursor-pointer"
+                aria-label="Close"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <motion.img
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.92 }}
+                transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                src={lightbox}
+                alt="Full size"
+                className="max-w-full max-h-full rounded-xl object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
   );
 }
 
@@ -172,6 +337,9 @@ function MoveJobCard({
         </div>
       </div>
 
+      {/* Photo panel — live job only */}
+      {isLive && <PhotoPanel />}
+
       {/* Status advance button */}
       {onAdvance && nextLabel && status < 5 && (
         <div className="px-4 pb-4">
@@ -201,7 +369,6 @@ export default function CrewPage() {
   const { move, advanceStatus } = useMove();
 
   const activeMoves = [
-    // Live move from the demo context
     {
       id: "live",
       clientName: move.clientName,
@@ -226,7 +393,6 @@ export default function CrewPage() {
       isLive: true,
       onAdvance: advanceStatus,
     },
-    // Static second job
     {
       ...STATIC_JOB,
       isLive: false,
@@ -241,6 +407,9 @@ export default function CrewPage() {
         <div className="flex items-center gap-2 mb-3">
           <Truck className="text-amber-400 w-4 h-4" />
           <span className="text-white font-heading font-semibold text-sm">TrustMovers</span>
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
         </div>
         <h1 className="text-xl font-heading font-bold text-white">Crew Dashboard</h1>
         <div className="flex items-center gap-2 mt-1">

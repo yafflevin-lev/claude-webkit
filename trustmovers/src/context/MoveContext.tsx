@@ -13,6 +13,25 @@ export type MoveStatus = 0 | 1 | 2 | 3 | 4 | 5;
 export type MoveType = "Local" | "Long Distance";
 export type MoveSize = "Studio" | "1 Bedroom" | "2 Bedroom" | "3+ Bedrooms";
 export type TimeWindow = "Morning" | "Afternoon" | "Evening" | "ASAP";
+export type PhotoLabel = "Before" | "After" | "Note";
+export type NotificationType = "status" | "estimate" | "photo" | "system";
+
+export interface NotificationEntry {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+}
+
+export interface PhotoEntry {
+  id: string;
+  dataUrl: string;
+  label: PhotoLabel;
+  caption: string;
+  uploadedAt: string;
+}
 
 export interface MoveHistoryEntry {
   id: string;
@@ -86,6 +105,9 @@ const STORAGE_KEY = "trustmovers_demo_state";
 
 interface MoveContextValue {
   move: MoveData;
+  photos: PhotoEntry[];
+  notifications: NotificationEntry[];
+  unreadCount: number;
   updateMove: (partial: Partial<MoveData>) => void;
   submitForm: (formData: Partial<MoveData>) => void;
   advanceStatus: () => void;
@@ -93,13 +115,43 @@ interface MoveContextValue {
   approveEstimate: () => void;
   completeMove: () => void;
   resetDemo: () => void;
+  addPhoto: (photo: Omit<PhotoEntry, "id" | "uploadedAt">) => void;
+  removePhoto: (id: string) => void;
+  markRead: (id: string) => void;
+  markAllRead: () => void;
 }
 
 const MoveContext = createContext<MoveContextValue | null>(null);
 
+const STATUS_NOTIFICATIONS: Record<number, { title: string; message: string }> = {
+  1: { title: "Deposit Received", message: "Your move is locked in. We'll confirm details shortly." },
+  2: { title: "Move Confirmed", message: "You're all set. Your crew is assigned and ready for move day." },
+  3: { title: "Crew En Route", message: "Your movers are heading over — ETA about 25 min." },
+  4: { title: "Crew Has Arrived", message: "Your team is at the pickup address and getting set up." },
+  5: { title: "Move Complete", message: "All done. Check your summary for photos and details." },
+};
+
+function makeNotification(
+  type: NotificationType,
+  title: string,
+  message: string
+): NotificationEntry {
+  return {
+    id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    type,
+    title,
+    message,
+    timestamp: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+    read: false,
+  };
+}
+
 export function MoveProvider({ children }: { children: ReactNode }) {
   const [move, setMove] = useState<MoveData>(DEFAULT_STATE);
   const [hydrated, setHydrated] = useState(false);
+  // Photos and notifications are kept in memory only
+  const [photos, setPhotos] = useState<PhotoEntry[]>([]);
+  const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
 
   useEffect(() => {
     try {
@@ -164,6 +216,10 @@ export function MoveProvider({ children }: { children: ReactNode }) {
       const next = Math.min(prev.status + 1, 5) as MoveStatus;
       const updated = { ...prev, status: next };
       persist(updated);
+      const notifData = STATUS_NOTIFICATIONS[next];
+      if (notifData) {
+        setNotifications((n) => [makeNotification("status", notifData.title, notifData.message), ...n]);
+      }
       return updated;
     });
   }, [persist]);
@@ -194,6 +250,10 @@ export function MoveProvider({ children }: { children: ReactNode }) {
       persist(updated);
       return updated;
     });
+    setNotifications((n) => [
+      makeNotification("estimate", "Estimate Approved", "Your crew can get moving. Everything looks good on our end."),
+      ...n,
+    ]);
   }, [persist]);
 
   const completeMove = useCallback(() => {
@@ -223,6 +283,29 @@ export function MoveProvider({ children }: { children: ReactNode }) {
     });
   }, [persist]);
 
+  const markRead = useCallback((id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+  }, []);
+
+  const markAllRead = useCallback(() => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, []);
+
+  const addPhoto = useCallback((photo: Omit<PhotoEntry, "id" | "uploadedAt">) => {
+    const entry: PhotoEntry = {
+      ...photo,
+      id: `photo-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      uploadedAt: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+    };
+    setPhotos((prev) => [...prev, entry]);
+  }, []);
+
+  const removePhoto = useCallback((id: string) => {
+    setPhotos((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
   const resetDemo = useCallback(() => {
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -230,14 +313,21 @@ export function MoveProvider({ children }: { children: ReactNode }) {
       // ignore
     }
     setMove(DEFAULT_STATE);
+    setPhotos([]);
+    setNotifications([]);
   }, []);
 
   if (!hydrated) return null;
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <MoveContext.Provider
       value={{
         move,
+        photos,
+        notifications,
+        unreadCount,
         updateMove,
         submitForm,
         advanceStatus,
@@ -245,6 +335,10 @@ export function MoveProvider({ children }: { children: ReactNode }) {
         approveEstimate,
         completeMove,
         resetDemo,
+        addPhoto,
+        removePhoto,
+        markRead,
+        markAllRead,
       }}
     >
       {children}
