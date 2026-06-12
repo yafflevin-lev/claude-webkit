@@ -20,6 +20,10 @@ import {
   Calendar,
   Weight,
   Clock,
+  Camera,
+  Receipt,
+  CreditCard,
+  ExternalLink,
 } from "lucide-react";
 
 function Toast({ message, onDismiss }: { message: string; onDismiss: () => void }) {
@@ -89,7 +93,8 @@ function HistoryCard({
 }
 
 export default function SummaryPage() {
-  const { move } = useMove();
+  const { move, photos } = useMove();
+  const paid = move.paymentStatus === "paid";
   const router = useRouter();
   const [toast, setToast] = useState<string | null>(null);
   const [emailInput, setEmailInput] = useState("");
@@ -144,6 +149,35 @@ export default function SummaryPage() {
       </header>
 
       <div className="px-4 py-5 max-w-lg mx-auto space-y-4">
+        {/* Rating card — shown if customer rated */}
+        {move.hasRated && move.rating && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex gap-0.5">
+                {[1,2,3,4,5].map((n) => (
+                  <Star key={n} className="w-5 h-5" fill={n <= (move.rating ?? 0) ? "#F59E0B" : "transparent"} stroke={n <= (move.rating ?? 0) ? "#F59E0B" : "#CBD5E1"} />
+                ))}
+              </div>
+              <span className="text-sm font-semibold text-navy-900">
+                {["", "Poor", "Below average", "Good", "Great", "Excellent!"][move.rating]}
+              </span>
+              {move.rating >= 4 && (
+                <a
+                  href="https://g.page/r/demo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-auto flex items-center gap-1 text-xs text-navy-600 hover:text-navy-800 transition-colors font-medium"
+                >
+                  Share on Google <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </div>
+            {move.ratingComment && (
+              <p className="text-sm text-slate-600 mt-2.5 italic">"{move.ratingComment}"</p>
+            )}
+          </div>
+        )}
+
         {/* Move Summary Card */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
@@ -267,6 +301,86 @@ export default function SummaryPage() {
               </li>
             ))}
           </ul>
+        </div>
+
+        {/* Crew photos */}
+        {photos.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+              <Camera className="w-4 h-4 text-slate-400" />
+              <p className="text-sm font-semibold text-navy-900">Crew Photos</p>
+              <span className="text-xs text-slate-400 ml-auto">{photos.length} photo{photos.length !== 1 ? "s" : ""}</span>
+            </div>
+            <div className="p-4 grid grid-cols-3 gap-2">
+              {photos.map((p) => (
+                <div key={p.id} className="space-y-1">
+                  <div className="relative aspect-square rounded-xl overflow-hidden bg-slate-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.dataUrl} alt={p.label} className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <span className="absolute bottom-1 left-1.5 text-white text-[10px] font-semibold">
+                      {p.label}
+                    </span>
+                  </div>
+                  <a
+                    href={p.dataUrl}
+                    download={`move-photo-${p.label.toLowerCase()}-${p.id}.jpg`}
+                    className="flex items-center justify-center gap-1 text-[10px] text-navy-600 hover:text-navy-800 transition-colors"
+                  >
+                    <Download className="w-3 h-3" />
+                    Save
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Payment receipt */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+            <Receipt className="w-4 h-4 text-slate-400" />
+            <p className="text-sm font-semibold text-navy-900">Payment</p>
+            {paid ? (
+              <span className="ml-auto flex items-center gap-1 bg-emerald-50 text-emerald-700 text-xs font-semibold px-2 py-0.5 rounded-full border border-emerald-200">
+                <CheckCircle2 className="w-3 h-3" />
+                Paid in full
+              </span>
+            ) : (
+              <span className="ml-auto flex items-center gap-1 bg-amber-50 text-amber-700 text-xs font-semibold px-2 py-0.5 rounded-full border border-amber-200">
+                Balance due
+              </span>
+            )}
+          </div>
+          <div className="px-4 py-3 space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">Deposit</span>
+              <span className="font-medium text-emerald-700">$150 paid</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-slate-500">Balance</span>
+              <span className={`font-medium ${paid ? "text-emerald-700" : "text-slate-800"}`}>
+                {paid ? "$430 paid" : "$430 due"}
+              </span>
+            </div>
+            <div className="pt-2 border-t border-slate-100 flex justify-between">
+              <span className="text-sm font-bold text-navy-900">Total</span>
+              <span className="text-sm font-bold text-navy-900">$580</span>
+            </div>
+            {paid && move.paymentPaidAt && (
+              <div className="flex items-center gap-1.5 pt-1">
+                <CreditCard className="w-3.5 h-3.5 text-slate-400" />
+                <p className="text-xs text-slate-500">
+                  Visa •••• 4242 · {move.paymentPaidAt}
+                </p>
+              </div>
+            )}
+            {!paid && (
+              <p className="text-xs text-slate-400 pt-1">
+                Visit your move status page to pay the remaining balance.
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Settling-in tips */}

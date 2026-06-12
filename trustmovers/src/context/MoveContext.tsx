@@ -13,6 +13,26 @@ export type MoveStatus = 0 | 1 | 2 | 3 | 4 | 5;
 export type MoveType = "Local" | "Long Distance";
 export type MoveSize = "Studio" | "1 Bedroom" | "2 Bedroom" | "3+ Bedrooms";
 export type TimeWindow = "Morning" | "Afternoon" | "Evening" | "ASAP";
+export type PhotoLabel = "Before" | "After" | "Note";
+export type NotificationType = "status" | "estimate" | "photo" | "payment" | "system";
+export type PaymentStatus = "unpaid" | "processing" | "paid";
+
+export interface NotificationEntry {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+}
+
+export interface PhotoEntry {
+  id: string;
+  dataUrl: string;
+  label: PhotoLabel;
+  caption: string;
+  uploadedAt: string;
+}
 
 export interface MoveHistoryEntry {
   id: string;
@@ -40,6 +60,11 @@ export interface MoveData {
   estimateApprovedAt: string | null;
   moveHistory: MoveHistoryEntry[];
   hasSubmitted: boolean;
+  paymentStatus: PaymentStatus;
+  paymentPaidAt: string | null;
+  hasRated: boolean;
+  rating: number | null;
+  ratingComment: string;
 }
 
 const DEMO_HISTORY: MoveHistoryEntry[] = [
@@ -80,12 +105,20 @@ const DEFAULT_STATE: MoveData = {
   estimateApprovedAt: null,
   moveHistory: DEMO_HISTORY,
   hasSubmitted: false,
+  paymentStatus: "unpaid",
+  paymentPaidAt: null,
+  hasRated: false,
+  rating: null,
+  ratingComment: "",
 };
 
 const STORAGE_KEY = "trustmovers_demo_state";
 
 interface MoveContextValue {
   move: MoveData;
+  photos: PhotoEntry[];
+  notifications: NotificationEntry[];
+  unreadCount: number;
   updateMove: (partial: Partial<MoveData>) => void;
   submitForm: (formData: Partial<MoveData>) => void;
   advanceStatus: () => void;
@@ -93,13 +126,45 @@ interface MoveContextValue {
   approveEstimate: () => void;
   completeMove: () => void;
   resetDemo: () => void;
+  addPhoto: (photo: Omit<PhotoEntry, "id" | "uploadedAt">) => void;
+  removePhoto: (id: string) => void;
+  markRead: (id: string) => void;
+  markAllRead: () => void;
+  processPayment: () => void;
+  submitRating: (rating: number, comment: string) => void;
 }
 
 const MoveContext = createContext<MoveContextValue | null>(null);
 
+const STATUS_NOTIFICATIONS: Record<number, { title: string; message: string }> = {
+  1: { title: "Deposit Received", message: "Your move is locked in. We'll confirm details shortly." },
+  2: { title: "Move Confirmed", message: "You're all set. Your crew is assigned and ready for move day." },
+  3: { title: "Crew En Route", message: "Your movers are heading over — ETA about 25 min." },
+  4: { title: "Crew Has Arrived", message: "Your team is at the pickup address and getting set up." },
+  5: { title: "Move Complete", message: "All done. Check your summary for photos and details." },
+};
+
+function makeNotification(
+  type: NotificationType,
+  title: string,
+  message: string
+): NotificationEntry {
+  return {
+    id: `notif-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+    type,
+    title,
+    message,
+    timestamp: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+    read: false,
+  };
+}
+
 export function MoveProvider({ children }: { children: ReactNode }) {
   const [move, setMove] = useState<MoveData>(DEFAULT_STATE);
   const [hydrated, setHydrated] = useState(false);
+  // Photos and notifications are kept in memory only
+  const [photos, setPhotos] = useState<PhotoEntry[]>([]);
+  const [notifications, setNotifications] = useState<NotificationEntry[]>([]);
 
   useEffect(() => {
     try {
@@ -149,6 +214,11 @@ export function MoveProvider({ children }: { children: ReactNode }) {
         estimateApproved: false,
         estimateApprovedAt: null,
         hasSubmitted: true,
+        paymentStatus: "unpaid" as PaymentStatus,
+        paymentPaidAt: null,
+        hasRated: false,
+        rating: null,
+        ratingComment: "",
       };
       setMove((prev) => {
         const next = { ...prev, ...filled };
@@ -164,6 +234,10 @@ export function MoveProvider({ children }: { children: ReactNode }) {
       const next = Math.min(prev.status + 1, 5) as MoveStatus;
       const updated = { ...prev, status: next };
       persist(updated);
+      const notifData = STATUS_NOTIFICATIONS[next];
+      if (notifData) {
+        setNotifications((n) => [makeNotification("status", notifData.title, notifData.message), ...n]);
+      }
       return updated;
     });
   }, [persist]);
@@ -194,6 +268,10 @@ export function MoveProvider({ children }: { children: ReactNode }) {
       persist(updated);
       return updated;
     });
+    setNotifications((n) => [
+      makeNotification("estimate", "Estimate Approved", "Your crew can get moving. Everything looks good on our end."),
+      ...n,
+    ]);
   }, [persist]);
 
   const completeMove = useCallback(() => {
@@ -223,6 +301,70 @@ export function MoveProvider({ children }: { children: ReactNode }) {
     });
   }, [persist]);
 
+  const processPayment = useCallback(() => {
+    setMove((prev) => {
+      const updated = { ...prev, paymentStatus: "processing" as PaymentStatus };
+      persist(updated);
+      return updated;
+    });
+    setTimeout(() => {
+      const paidAt = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      setMove((prev) => {
+        const updated = { ...prev, paymentStatus: "paid" as PaymentStatus, paymentPaidAt: paidAt };
+        persist(updated);
+        return updated;
+      });
+      setNotifications((n) => [
+        makeNotification("payment", "Payment Received", "Balance of $430 processed. Your receipt is saved."),
+        ...n,
+      ]);
+    }, 2000);
+  }, [persist]);
+
+  const submitRating = useCallback(
+    (rating: number, comment: string) => {
+      setMove((prev) => {
+        const updated = { ...prev, hasRated: true, rating, ratingComment: comment };
+        persist(updated);
+        return updated;
+      });
+      setNotifications((n) => [
+        makeNotification(
+          "system",
+          rating >= 4 ? "Thanks for the review!" : "Feedback received",
+          rating >= 4
+            ? `${rating}-star review submitted. We really appreciate it!`
+            : "Your feedback helps us improve. A manager will follow up."
+        ),
+        ...n,
+      ]);
+    },
+    [persist]
+  );
+
+  const markRead = useCallback((id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+    );
+  }, []);
+
+  const markAllRead = useCallback(() => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }, []);
+
+  const addPhoto = useCallback((photo: Omit<PhotoEntry, "id" | "uploadedAt">) => {
+    const entry: PhotoEntry = {
+      ...photo,
+      id: `photo-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      uploadedAt: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+    };
+    setPhotos((prev) => [...prev, entry]);
+  }, []);
+
+  const removePhoto = useCallback((id: string) => {
+    setPhotos((prev) => prev.filter((p) => p.id !== id));
+  }, []);
+
   const resetDemo = useCallback(() => {
     try {
       localStorage.removeItem(STORAGE_KEY);
@@ -230,14 +372,21 @@ export function MoveProvider({ children }: { children: ReactNode }) {
       // ignore
     }
     setMove(DEFAULT_STATE);
+    setPhotos([]);
+    setNotifications([]);
   }, []);
 
   if (!hydrated) return null;
+
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
     <MoveContext.Provider
       value={{
         move,
+        photos,
+        notifications,
+        unreadCount,
         updateMove,
         submitForm,
         advanceStatus,
@@ -245,6 +394,12 @@ export function MoveProvider({ children }: { children: ReactNode }) {
         approveEstimate,
         completeMove,
         resetDemo,
+        addPhoto,
+        removePhoto,
+        markRead,
+        markAllRead,
+        processPayment,
+        submitRating,
       }}
     >
       {children}

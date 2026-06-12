@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMove } from "@/context/MoveContext";
 import type { MoveType, MoveSize, TimeWindow } from "@/context/MoveContext";
 import { motion } from "framer-motion";
-import { Shield, Truck, ArrowRight, ChevronDown } from "lucide-react";
+import { Shield, Truck, ArrowRight, ChevronDown, Calculator } from "lucide-react";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 16 },
@@ -17,15 +17,15 @@ const fadeUp = {
 };
 
 export default function IntakePage() {
-  const { submitForm } = useMove();
+  const { submitForm, move } = useMove();
   const router = useRouter();
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [fromAddress, setFromAddress] = useState("");
   const [toAddress, setToAddress] = useState("");
-  const [moveType, setMoveType] = useState<MoveType>("Local");
-  const [moveSize, setMoveSize] = useState<MoveSize>("1 Bedroom");
+  const [moveType, setMoveType] = useState<MoveType>(move.moveType);
+  const [moveSize, setMoveSize] = useState<MoveSize>(move.moveSize);
   const [notes, setNotes] = useState("");
   const [preferredDate, setPreferredDate] = useState("");
   const [timeWindow, setTimeWindow] = useState<TimeWindow>("Morning");
@@ -63,11 +63,18 @@ export default function IntakePage() {
             for One Stop Moving &amp; Storage
           </p>
         </div>
-        <div className="flex items-center gap-1.5 bg-navy-800 px-3 py-1.5 rounded-full">
-          <Shield className="text-emerald-500 w-3.5 h-3.5" />
-          <span className="text-slate-300 text-xs font-medium">
-            Secure booking link
-          </span>
+        <div className="flex items-center gap-2">
+          <a
+            href="/quote"
+            className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 px-3 py-1.5 rounded-full transition-colors"
+          >
+            <Calculator className="w-3.5 h-3.5 text-white" />
+            <span className="text-white text-xs font-semibold">Get a quote</span>
+          </a>
+          <div className="flex items-center gap-1.5 bg-navy-800 px-3 py-1.5 rounded-full">
+            <Shield className="text-emerald-500 w-3.5 h-3.5" />
+            <span className="text-slate-300 text-xs font-medium hidden sm:inline">Secure booking</span>
+          </div>
         </div>
       </header>
 
