@@ -23,6 +23,7 @@ import {
   Camera,
   Receipt,
   CreditCard,
+  ExternalLink,
 } from "lucide-react";
 
 function Toast({ message, onDismiss }: { message: string; onDismiss: () => void }) {
@@ -148,6 +149,35 @@ export default function SummaryPage() {
       </header>
 
       <div className="px-4 py-5 max-w-lg mx-auto space-y-4">
+        {/* Rating card — shown if customer rated */}
+        {move.hasRated && move.rating && (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex gap-0.5">
+                {[1,2,3,4,5].map((n) => (
+                  <Star key={n} className="w-5 h-5" fill={n <= (move.rating ?? 0) ? "#F59E0B" : "transparent"} stroke={n <= (move.rating ?? 0) ? "#F59E0B" : "#CBD5E1"} />
+                ))}
+              </div>
+              <span className="text-sm font-semibold text-navy-900">
+                {["", "Poor", "Below average", "Good", "Great", "Excellent!"][move.rating]}
+              </span>
+              {move.rating >= 4 && (
+                <a
+                  href="https://g.page/r/demo"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="ml-auto flex items-center gap-1 text-xs text-navy-600 hover:text-navy-800 transition-colors font-medium"
+                >
+                  Share on Google <ExternalLink className="w-3 h-3" />
+                </a>
+              )}
+            </div>
+            {move.ratingComment && (
+              <p className="text-sm text-slate-600 mt-2.5 italic">"{move.ratingComment}"</p>
+            )}
+          </div>
+        )}
+
         {/* Move Summary Card */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-4 py-3 bg-slate-50 border-b border-slate-100 flex items-center justify-between">

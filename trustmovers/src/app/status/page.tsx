@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { PaymentSheet } from "@/components/PaymentSheet";
+import { RatingGate } from "@/components/RatingGate";
 
 const PIPELINE_STEPS = [
   { label: "Scheduled", icon: Clock },
@@ -661,6 +662,8 @@ export default function StatusPage() {
   }
 
   return (
+    <>
+    <RatingGate />
     <main className="min-h-screen bg-slate-50 pb-24">
       {/* Header */}
       <header className="bg-navy-900 px-5 pt-4 pb-5">
@@ -846,5 +849,6 @@ export default function StatusPage() {
 
       <DemoControls />
     </main>
+    </>
   );
 }

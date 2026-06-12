@@ -62,6 +62,9 @@ export interface MoveData {
   hasSubmitted: boolean;
   paymentStatus: PaymentStatus;
   paymentPaidAt: string | null;
+  hasRated: boolean;
+  rating: number | null;
+  ratingComment: string;
 }
 
 const DEMO_HISTORY: MoveHistoryEntry[] = [
@@ -104,6 +107,9 @@ const DEFAULT_STATE: MoveData = {
   hasSubmitted: false,
   paymentStatus: "unpaid",
   paymentPaidAt: null,
+  hasRated: false,
+  rating: null,
+  ratingComment: "",
 };
 
 const STORAGE_KEY = "trustmovers_demo_state";
@@ -125,6 +131,7 @@ interface MoveContextValue {
   markRead: (id: string) => void;
   markAllRead: () => void;
   processPayment: () => void;
+  submitRating: (rating: number, comment: string) => void;
 }
 
 const MoveContext = createContext<MoveContextValue | null>(null);
@@ -209,6 +216,9 @@ export function MoveProvider({ children }: { children: ReactNode }) {
         hasSubmitted: true,
         paymentStatus: "unpaid" as PaymentStatus,
         paymentPaidAt: null,
+        hasRated: false,
+        rating: null,
+        ratingComment: "",
       };
       setMove((prev) => {
         const next = { ...prev, ...filled };
@@ -311,6 +321,27 @@ export function MoveProvider({ children }: { children: ReactNode }) {
     }, 2000);
   }, [persist]);
 
+  const submitRating = useCallback(
+    (rating: number, comment: string) => {
+      setMove((prev) => {
+        const updated = { ...prev, hasRated: true, rating, ratingComment: comment };
+        persist(updated);
+        return updated;
+      });
+      setNotifications((n) => [
+        makeNotification(
+          "system",
+          rating >= 4 ? "Thanks for the review!" : "Feedback received",
+          rating >= 4
+            ? `${rating}-star review submitted. We really appreciate it!`
+            : "Your feedback helps us improve. A manager will follow up."
+        ),
+        ...n,
+      ]);
+    },
+    [persist]
+  );
+
   const markRead = useCallback((id: string) => {
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
@@ -368,6 +399,7 @@ export function MoveProvider({ children }: { children: ReactNode }) {
         markRead,
         markAllRead,
         processPayment,
+        submitRating,
       }}
     >
       {children}
