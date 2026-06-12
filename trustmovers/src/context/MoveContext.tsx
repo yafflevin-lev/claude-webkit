@@ -16,6 +16,31 @@ export type TimeWindow = "Morning" | "Afternoon" | "Evening" | "ASAP";
 export type PhotoLabel = "Before" | "After" | "Note";
 export type NotificationType = "status" | "estimate" | "photo" | "payment" | "system";
 export type PaymentStatus = "unpaid" | "processing" | "paid";
+export type QuoteVisitStatus = "requested" | "confirmed" | "en_route" | "arrived" | "quote_ready" | "approved";
+
+export interface QuoteVisitLineItem {
+  id: string;
+  label: string;
+  amount: number;
+}
+
+export interface QuoteVisitData {
+  status: QuoteVisitStatus;
+  requestedAt: string;
+  confirmedAt: string | null;
+  enRouteAt: string | null;
+  arrivedAt: string | null;
+  quoteSentAt: string | null;
+  approvedAt: string | null;
+  clientName: string;
+  clientPhone: string;
+  address: string;
+  preferredDate: string;
+  preferredTime: string;
+  lineItems: QuoteVisitLineItem[];
+  quoteTotal: number;
+  quoteNotes: string;
+}
 
 export interface QueueEntry {
   id: string;
@@ -77,6 +102,7 @@ export interface MoveData {
   hasRated: boolean;
   rating: number | null;
   ratingComment: string;
+  quoteVisit: QuoteVisitData | null;
 }
 
 const DEMO_HISTORY: MoveHistoryEntry[] = [
@@ -124,6 +150,7 @@ const DEFAULT_STATE: MoveData = {
   hasRated: false,
   rating: null,
   ratingComment: "",
+  quoteVisit: null,
 };
 
 const STORAGE_KEY = "trustmovers_demo_state";
@@ -158,9 +185,25 @@ interface MoveContextValue {
   dailyQueue: QueueEntry[];
   queuePosition: number;
   markQueueJobDone: (id: string) => void;
+  requestQuoteVisit: (data: Pick<QuoteVisitData, "clientName" | "clientPhone" | "address" | "preferredDate" | "preferredTime">) => void;
+  advanceQuoteVisit: () => void;
+  sendClientQuote: (items: QuoteVisitLineItem[], notes: string) => void;
+  approveInHomeQuote: () => void;
 }
 
 const MoveContext = createContext<MoveContextValue | null>(null);
+
+const QUOTE_VISIT_NEXT: Partial<Record<QuoteVisitStatus, QuoteVisitStatus>> = {
+  requested: "confirmed",
+  confirmed: "en_route",
+  en_route: "arrived",
+};
+
+const QUOTE_VISIT_NOTIFS: Partial<Record<QuoteVisitStatus, { title: string; message: string }>> = {
+  confirmed: { title: "Visit Confirmed", message: "Your in-home assessment is confirmed. We'll see you soon!" },
+  en_route: { title: "Assessor En Route", message: "Your assessor is on the way — ETA about 20 min." },
+  arrived: { title: "Assessor Arrived", message: "Your assessor is at your door and ready to walk through." },
+};
 
 const STATUS_NOTIFICATIONS: Record<number, { title: string; message: string }> = {
   1: { title: "Deposit Received", message: "Your move is locked in. We'll confirm details shortly." },
@@ -248,6 +291,7 @@ export function MoveProvider({ children }: { children: ReactNode }) {
         hasRated: false,
         rating: null,
         ratingComment: "",
+        quoteVisit: null,
       };
       setMove((prev) => {
         const next = { ...prev, ...filled };
@@ -368,6 +412,113 @@ export function MoveProvider({ children }: { children: ReactNode }) {
     ]);
   }, [persist]);
 
+  const requestQuoteVisit = useCallback(
+    (data: Pick<QuoteVisitData, "clientName" | "clientPhone" | "address" | "preferredDate" | "preferredTime">) => {
+      const now = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      setMove((prev) => {
+        const updated: MoveData = {
+          ...prev,
+          quoteVisit: {
+            ...data,
+            status: "requested",
+            requestedAt: now,
+            confirmedAt: null,
+            enRouteAt: null,
+            arrivedAt: null,
+            quoteSentAt: null,
+            approvedAt: null,
+            lineItems: [],
+            quoteTotal: 0,
+            quoteNotes: "",
+          },
+        };
+        persist(updated);
+        return updated;
+      });
+      setNotifications((n) => [
+        makeNotification("status", "Assessment Requested", "We received your request. We'll confirm your visit shortly."),
+        ...n,
+      ]);
+    },
+    [persist]
+  );
+
+  const advanceQuoteVisit = useCallback(() => {
+    setMove((prev) => {
+      if (!prev.quoteVisit) return prev;
+      const next = QUOTE_VISIT_NEXT[prev.quoteVisit.status];
+      if (!next) return prev;
+      const now = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      const timeField: Partial<QuoteVisitData> = {};
+      if (next === "confirmed") timeField.confirmedAt = now;
+      if (next === "en_route") timeField.enRouteAt = now;
+      if (next === "arrived") timeField.arrivedAt = now;
+      const updated: MoveData = {
+        ...prev,
+        quoteVisit: { ...prev.quoteVisit, status: next, ...timeField },
+      };
+      persist(updated);
+      const notif = QUOTE_VISIT_NOTIFS[next];
+      if (notif) {
+        setNotifications((n) => [makeNotification("status", notif.title, notif.message), ...n]);
+      }
+      return updated;
+    });
+  }, [persist]);
+
+  const sendClientQuote = useCallback(
+    (items: QuoteVisitLineItem[], notes: string) => {
+      const total = items.reduce((sum, item) => sum + item.amount, 0);
+      const now = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      setMove((prev) => {
+        if (!prev.quoteVisit) return prev;
+        const updated: MoveData = {
+          ...prev,
+          quoteVisit: {
+            ...prev.quoteVisit,
+            status: "quote_ready",
+            quoteSentAt: now,
+            lineItems: items,
+            quoteTotal: total,
+            quoteNotes: notes,
+          },
+        };
+        persist(updated);
+        return updated;
+      });
+      setNotifications((n) => [
+        makeNotification("estimate", "Your Quote is Ready", "Your assessor built your personalized quote. Review and approve it now."),
+        ...n,
+      ]);
+    },
+    [persist]
+  );
+
+  const approveInHomeQuote = useCallback(() => {
+    const now = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    setMove((prev) => {
+      if (!prev.quoteVisit) return prev;
+      const updated: MoveData = {
+        ...prev,
+        clientName: prev.quoteVisit.clientName,
+        clientPhone: prev.quoteVisit.clientPhone,
+        fromAddress: prev.quoteVisit.address,
+        hasSubmitted: true,
+        status: 0,
+        depositPaid: false,
+        depositPaidAt: null,
+        paymentStatus: "unpaid",
+        quoteVisit: { ...prev.quoteVisit, status: "approved", approvedAt: now },
+      };
+      persist(updated);
+      return updated;
+    });
+    setNotifications((n) => [
+      makeNotification("payment", "Quote Approved!", "Your move is locked in. Pay the deposit to secure your date."),
+      ...n,
+    ]);
+  }, [persist]);
+
   const submitRating = useCallback(
     (rating: number, comment: string) => {
       setMove((prev) => {
@@ -439,7 +590,7 @@ export function MoveProvider({ children }: { children: ReactNode }) {
     } catch {
       // ignore
     }
-    setMove(DEFAULT_STATE);
+    setMove({ ...DEFAULT_STATE, quoteVisit: null });
     setPhotos([]);
     setNotifications([]);
     setDailyQueue(INITIAL_QUEUE);
@@ -477,6 +628,10 @@ export function MoveProvider({ children }: { children: ReactNode }) {
         dailyQueue,
         queuePosition,
         markQueueJobDone,
+        requestQuoteVisit,
+        advanceQuoteVisit,
+        sendClientQuote,
+        approveInHomeQuote,
       }}
     >
       {children}

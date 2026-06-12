@@ -20,7 +20,12 @@ import {
   Trash2,
   Signal,
   ListChecks,
+  Home,
+  Plus,
+  Minus,
+  Send,
 } from "lucide-react";
+import type { QuoteVisitLineItem } from "@/context/MoveContext";
 import { NotificationBell } from "@/components/NotificationBell";
 
 const PIPELINE_STEPS = [
@@ -177,6 +182,191 @@ function QueueStrip() {
             : "Live customer job — advance status with the button below"}
         </p>
       </div>
+    </div>
+  );
+}
+
+// ---------- Quote Visit Panel ----------
+const DEFAULT_ITEMS: QuoteVisitLineItem[] = [
+  { id: "labor", label: "Labor (2 movers, 4hr min)", amount: 420 },
+  { id: "truck", label: "Truck & fuel", amount: 75 },
+  { id: "materials", label: "Packing materials", amount: 55 },
+];
+
+function QuoteVisitPanel() {
+  const { move, advanceQuoteVisit, sendClientQuote } = useMove();
+  const visit = move.quoteVisit;
+  const [lineItems, setLineItems] = useState<QuoteVisitLineItem[]>(DEFAULT_ITEMS);
+  const [quoteNotes, setQuoteNotes] = useState("");
+  const [sending, setSending] = useState(false);
+
+  if (!visit || visit.status === "approved") return null;
+
+  const VISIT_PIPELINE = ["requested", "confirmed", "en_route", "arrived", "quote_ready"];
+  const currentStep = VISIT_PIPELINE.indexOf(visit.status);
+
+  const ADVANCE_LABELS: Partial<Record<string, string>> = {
+    requested: "Confirm Visit",
+    confirmed: "Mark En Route",
+    en_route: "Mark Arrived",
+  };
+  const advanceLabel = ADVANCE_LABELS[visit.status];
+
+  function updateAmount(id: string, delta: number) {
+    setLineItems((prev) =>
+      prev.map((item) => item.id === id ? { ...item, amount: Math.max(0, item.amount + delta) } : item)
+    );
+  }
+
+  function handleSendQuote() {
+    setSending(true);
+    setTimeout(() => {
+      sendClientQuote(lineItems, quoteNotes || "Quote built during your in-home walk-through. Price is guaranteed.");
+      setSending(false);
+    }, 600);
+  }
+
+  const total = lineItems.reduce((sum, i) => sum + i.amount, 0);
+
+  return (
+    <div className="bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="px-4 py-3 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
+        <Home className="w-4 h-4 text-amber-600 flex-shrink-0" />
+        <p className="text-sm font-bold text-amber-900 flex-1 min-w-0">In-Home Quote Visit</p>
+        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+          visit.status === "quote_ready" ? "bg-emerald-100 text-emerald-700" :
+          visit.status === "arrived"     ? "bg-purple-100 text-purple-700"   :
+          visit.status === "en_route"    ? "bg-orange-100 text-orange-700"   :
+          visit.status === "confirmed"   ? "bg-blue-100 text-blue-700"       :
+          "bg-slate-100 text-slate-600"
+        }`}>
+          {visit.status === "requested"   && "Pending Confirm"}
+          {visit.status === "confirmed"   && "Confirmed"}
+          {visit.status === "en_route"    && "En Route"}
+          {visit.status === "arrived"     && "At Location"}
+          {visit.status === "quote_ready" && "Quote Sent"}
+        </span>
+      </div>
+
+      {/* Client info */}
+      <div className="px-4 py-3 border-b border-slate-100 space-y-1.5">
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold text-navy-900">{visit.clientName || "Pending client"}</p>
+          <span className="text-slate-400 text-xs">{visit.clientPhone}</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <MapPin className="w-3 h-3" />
+          <span className="truncate">{visit.address}</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-slate-500">
+          <Clock className="w-3 h-3" />
+          <span>{visit.preferredDate} · {visit.preferredTime}</span>
+        </div>
+      </div>
+
+      {/* Progress pills */}
+      <div className="px-4 py-3 border-b border-slate-100">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          {["Requested", "Confirmed", "En Route", "Arrived", "Quote Sent"].map((label, i) => (
+            <div key={label} className="flex items-center gap-1 flex-shrink-0">
+              <div className={`px-2.5 py-1 rounded-full text-[10px] font-semibold ${
+                i < currentStep  ? "bg-emerald-100 text-emerald-700" :
+                i === currentStep ? "bg-amber-500 text-white" :
+                "bg-slate-100 text-slate-400"
+              }`}>
+                {i < currentStep ? "✓ " : ""}{label}
+              </div>
+              {i < 4 && <div className={`w-3 h-px flex-shrink-0 ${i < currentStep ? "bg-emerald-300" : "bg-slate-200"}`} />}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Advance button (if not yet arrived) */}
+      {advanceLabel && (
+        <div className="px-4 py-3 border-b border-slate-100">
+          <button
+            onClick={advanceQuoteVisit}
+            className="w-full bg-amber-500 hover:bg-amber-600 active:scale-[0.98] text-white font-semibold text-sm py-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2"
+          >
+            <ChevronRight className="w-4 h-4" />
+            {advanceLabel}
+          </button>
+        </div>
+      )}
+
+      {/* Quote builder — visible when arrived */}
+      {visit.status === "arrived" && (
+        <div className="px-4 py-3">
+          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Build Quote</p>
+          <div className="space-y-2 mb-3">
+            {lineItems.map((item) => (
+              <div key={item.id} className="flex items-center gap-2">
+                <p className="flex-1 text-sm text-slate-700 min-w-0 truncate">{item.label}</p>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <button
+                    onClick={() => updateAmount(item.id, -25)}
+                    className="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center cursor-pointer transition-colors"
+                  >
+                    <Minus className="w-3 h-3 text-slate-600" />
+                  </button>
+                  <span className="text-sm font-semibold text-navy-900 w-12 text-center">${item.amount}</span>
+                  <button
+                    onClick={() => updateAmount(item.id, 25)}
+                    className="w-6 h-6 rounded-lg bg-slate-100 hover:bg-slate-200 flex items-center justify-center cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3 h-3 text-slate-600" />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center justify-between py-2 border-t border-slate-100 mb-3">
+            <span className="text-sm font-bold text-navy-900">Total</span>
+            <span className="text-base font-heading font-bold text-navy-900">${total}</span>
+          </div>
+
+          <div className="mb-3">
+            <label className="block text-xs font-semibold text-slate-500 mb-1.5">Notes for client (optional)</label>
+            <textarea
+              value={quoteNotes}
+              onChange={(e) => setQuoteNotes(e.target.value)}
+              placeholder="Any specific details about their home or move…"
+              rows={2}
+              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 outline-none focus:border-amber-400 bg-white resize-none transition-colors"
+            />
+          </div>
+
+          <button
+            onClick={handleSendQuote}
+            disabled={sending}
+            className="w-full bg-navy-900 hover:bg-navy-800 active:scale-[0.98] disabled:opacity-60 text-white font-heading font-bold text-sm py-3.5 rounded-2xl cursor-pointer transition-all flex items-center justify-center gap-2 shadow-lg"
+          >
+            {sending ? (
+              <>Sending…</>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                Send Quote to Client
+              </>
+            )}
+          </button>
+          <p className="text-center text-[11px] text-slate-400 mt-2">
+            Client sees the quote instantly on their phone
+          </p>
+        </div>
+      )}
+
+      {visit.status === "quote_ready" && (
+        <div className="px-4 py-3 flex items-center gap-2.5">
+          <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+          <p className="text-sm text-emerald-700 font-medium">
+            Quote of ${visit.quoteTotal} sent to client at {visit.quoteSentAt}. Waiting for approval.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -546,6 +736,9 @@ export default function CrewPage() {
       <div className="px-4 py-5 max-w-lg mx-auto space-y-4">
         {/* Day queue */}
         <QueueStrip />
+
+        {/* Quote visit panel */}
+        <QuoteVisitPanel />
 
         {/* Active jobs header */}
         <div className="flex items-center justify-between">
