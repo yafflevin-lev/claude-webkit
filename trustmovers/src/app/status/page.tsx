@@ -22,6 +22,8 @@ import {
   Camera,
   CreditCard,
   Receipt,
+  Phone,
+  MessageCircle,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { PaymentSheet } from "@/components/PaymentSheet";
@@ -43,15 +45,6 @@ const STATUS_MESSAGES: Record<number, string> = {
   3: "Your crew is heading to you. ETA: ~20 min.",
   4: "Your crew has arrived and is getting set up.",
   5: "Move complete. Great work today.",
-};
-
-const QUEUE_LINES: Record<number, string | null> = {
-  0: "You are 3 jobs away",
-  1: "You are 2 jobs away",
-  2: "You are 1 job away",
-  3: null,
-  4: null,
-  5: null,
 };
 
 function formatDate(iso: string) {
@@ -655,7 +648,6 @@ export default function StatusPage() {
 
   const dateLabel = formatDate(move.preferredDate);
   const isMovingDay = move.preferredDate === new Date().toISOString().split("T")[0];
-  const queueLine = QUEUE_LINES[move.status];
 
   function handleStartMove() {
     setStatus(3);
@@ -672,7 +664,7 @@ export default function StatusPage() {
           <span className="text-white font-heading font-semibold text-sm">TrustMovers</span>
           <span className="text-navy-400 text-xs">·</span>
           <a href="/" className="text-navy-300 text-xs hover:text-white transition-colors">
-            ← Edit booking
+            ← Home
           </a>
           <div className="ml-auto">
             <NotificationBell />
@@ -730,12 +722,24 @@ export default function StatusPage() {
             </span>
           </div>
 
-          {queueLine && (
-            <div className="mt-3 pt-3 border-t border-slate-100">
-              <p className="text-slate-700 text-sm font-medium">{queueLine}</p>
-              <p className="text-slate-400 text-xs mt-0.5">
-                We'll text you when you're next.
-              </p>
+          {/* Contact strip — always visible pre-complete */}
+          {move.status < 5 && (
+            <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2">
+              <p className="text-xs text-slate-500 flex-1">Questions about your move?</p>
+              <a
+                href="tel:+15555550100"
+                className="flex items-center gap-1.5 bg-navy-900 hover:bg-navy-800 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+              >
+                <Phone className="w-3 h-3" />
+                Call us
+              </a>
+              <a
+                href="sms:+15555550100"
+                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+              >
+                <MessageCircle className="w-3 h-3" />
+                Text us
+              </a>
             </div>
           )}
         </div>
