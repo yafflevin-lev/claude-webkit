@@ -14,7 +14,6 @@ import {
   Users,
   Star,
   Lock,
-  ChevronRight,
   X,
   SlidersHorizontal,
   BadgeCheck,
@@ -25,6 +24,9 @@ import {
   Phone,
   MessageCircle,
   Signal,
+  Lightbulb,
+  ListChecks,
+  Square,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { PaymentSheet } from "@/components/PaymentSheet";
@@ -64,6 +66,202 @@ function timeWindowLabel(tw: string) {
   if (tw === "Afternoon") return "Afternoon (12–5)";
   if (tw === "Evening") return "Evening (5–8)";
   return tw;
+}
+
+// ---------- Stage Tips ----------
+const STAGE_TIPS: Record<number, { heading: string; tips: string[] }> = {
+  0: {
+    heading: "Getting started",
+    tips: [
+      "Pay your deposit to lock in your crew and time slot — slots fill fast.",
+      "Forward this page to anyone helping on move day.",
+    ],
+  },
+  1: {
+    heading: "Start preparing now",
+    tips: [
+      "Start packing with rooms you use least — spare bedroom, storage closets first.",
+      "Label every box with its destination room, not just what's inside. It speeds up unloading.",
+      "Book your elevator now if your building requires advance notice — most ask for 24–48 hrs.",
+    ],
+  },
+  2: {
+    heading: "Move day is coming",
+    tips: [
+      "Do a final walkthrough tonight — check every closet, under beds, and storage areas.",
+      "Charge your phone fully the night before. You'll rely on it all day.",
+      "Leave clear walking paths from each room to your front door.",
+    ],
+  },
+  3: {
+    heading: "Get ready — crew is on the way",
+    tips: [
+      "Prop your building entrance open if you can — it saves real time on the unload.",
+      "Have the parking spot closest to your entrance clear for the truck.",
+      "Last check: drawers, medicine cabinet, shelves, and closets.",
+    ],
+  },
+  4: {
+    heading: "Make it smooth",
+    tips: [
+      "Walk the crew through your home first — point out fragile and extra-heavy items.",
+      "Keep pets and kids in a safe, separate room during the move.",
+      "Have water or drinks available for the crew — always appreciated.",
+      "Moving anything yourself? Do it now to avoid confusion.",
+    ],
+  },
+  5: {
+    heading: "Almost done",
+    tips: [
+      "Check every room, closet, and cabinet before the crew leaves.",
+      "Test lights, outlets, and water at your new place right away.",
+      "Update your address: USPS.com, your bank, DMV, and subscriptions.",
+    ],
+  },
+};
+
+function StageTips({ status }: { status: number }) {
+  const data = STAGE_TIPS[status];
+  if (!data) return null;
+  return (
+    <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <div className="w-6 h-6 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+          <Lightbulb className="w-3.5 h-3.5 text-amber-600" />
+        </div>
+        <p className="text-xs font-semibold text-amber-800 uppercase tracking-wide">{data.heading}</p>
+      </div>
+      <ul className="space-y-2">
+        {data.tips.map((tip) => (
+          <li key={tip} className="flex items-start gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 flex-shrink-0" />
+            <p className="text-sm text-amber-900 leading-snug">{tip}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// ---------- Todo Checklist ----------
+const TODO_ITEMS: Record<string, string[]> = {
+  "Studio": [
+    "Book elevator at both buildings (usually 24–48 hrs notice required)",
+    "Pack all boxes and label each with its destination room",
+    "Disassemble bed frame and any flat-pack furniture",
+    "Set aside an overnight bag — chargers, meds, toiletries, clothes",
+    "Clear a path from all furniture to the front door",
+    "Confirm truck parking at both addresses",
+  ],
+  "1 Bedroom": [
+    "Book elevator at both buildings (usually 24–48 hrs notice required)",
+    "Pack all boxes and label each with its destination room",
+    "Disassemble bed frame, desk, and any flat-pack furniture",
+    "Disconnect washer/dryer if applicable",
+    "Set aside an overnight bag — chargers, meds, toiletries, clothes",
+    "Clear paths from all rooms to the front door",
+    "Confirm truck parking at both addresses",
+  ],
+  "2 Bedroom": [
+    "Book elevator at both buildings (usually 24–48 hrs notice required)",
+    "Pack all boxes and label each with its destination room",
+    "Disassemble beds, desks, and large shelving units",
+    "Defrost your fridge at least 12 hours before move day",
+    "Disconnect washer/dryer if applicable",
+    "Arrange pet or childcare for move day",
+    "Set aside an overnight bag — chargers, meds, toiletries, clothes",
+    "Clear paths from all rooms to the front door",
+    "Confirm truck parking at both addresses",
+  ],
+  "3+ Bedrooms": [
+    "Book elevator at both buildings (usually 24–48 hrs notice required)",
+    "Pack and label all boxes by destination room",
+    "Disassemble beds, desks, wardrobes, and large furniture",
+    "Defrost fridge and freezer 24 hours before move day",
+    "Disconnect washer, dryer, and any wall-mounted items",
+    "Arrange pet and childcare for move day",
+    "Reserve 2 parking spots near both building entrances for the truck",
+    "Pack a first-night box — clothes, toiletries, chargers, snacks, bedding",
+    "Do a full walkthrough of every closet, cabinet, and storage area",
+    "Confirm move-in rules and restrictions at your new address",
+  ],
+};
+
+function TodoChecklist({ moveSize }: { moveSize: string }) {
+  const items = TODO_ITEMS[moveSize] ?? TODO_ITEMS["1 Bedroom"];
+  const [checked, setChecked] = useState<Set<number>>(new Set());
+
+  function toggle(i: number) {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      next.has(i) ? next.delete(i) : next.add(i);
+      return next;
+    });
+  }
+
+  const done = checked.size;
+  const total = items.length;
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <ListChecks className="w-4 h-4 text-slate-400" />
+          <p className="text-sm font-semibold text-navy-900">Move Day Checklist</p>
+        </div>
+        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+          done === total ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+        }`}>
+          {done}/{total}
+        </span>
+      </div>
+
+      {done === total && total > 0 && (
+        <div className="mx-4 mt-3 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+          <p className="text-xs font-semibold text-emerald-700">You're all set for move day!</p>
+        </div>
+      )}
+
+      <div className="px-4 py-3 space-y-2">
+        {items.map((item, i) => {
+          const isChecked = checked.has(i);
+          return (
+            <button
+              key={i}
+              onClick={() => toggle(i)}
+              className="w-full flex items-start gap-3 text-left cursor-pointer group"
+            >
+              <div className={`w-5 h-5 rounded border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-all ${
+                isChecked
+                  ? "bg-emerald-500 border-emerald-500"
+                  : "border-slate-300 group-hover:border-navy-400"
+              }`}>
+                {isChecked && <CheckCircle2 className="w-3 h-3 text-white" />}
+                {!isChecked && <Square className="w-0 h-0 opacity-0" />}
+              </div>
+              <p className={`text-sm leading-snug transition-colors ${
+                isChecked ? "text-slate-400 line-through" : "text-slate-700"
+              }`}>
+                {item}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mx-4 mb-3">
+        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-emerald-500 rounded-full"
+            initial={false}
+            animate={{ width: `${(done / total) * 100}%` }}
+            transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
+          />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ---------- Pipeline ----------
@@ -284,74 +482,6 @@ function EstimateCard() {
         )}
       </AnimatePresence>
     </>
-  );
-}
-
-// ---------- Move Prep ----------
-function MovePrepSection({ moveSize }: { moveSize: string }) {
-  return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-      <div className="px-4 py-3 border-b border-slate-100">
-        <p className="text-sm font-semibold text-navy-900">
-          Things to know before your move
-        </p>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Tailored for: {moveSize} · Local move
-        </p>
-      </div>
-
-      <div className="px-4 py-3 space-y-4">
-        {/* What to do first */}
-        <div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-            What to do first
-          </p>
-          <ul className="space-y-1.5">
-            {[
-              "Take inventory of large and fragile items",
-              "Pack fragile items with bubble wrap or towels",
-              "Pack heavy things in small boxes, light things in large boxes",
-              "Set aside a moving day bag — chargers, meds, snacks, toiletries",
-            ].map((item) => (
-              <li key={item} className="flex items-start gap-2 text-sm text-slate-700">
-                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-2 flex-shrink-0" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Moving day readiness */}
-        <div>
-          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
-            Moving day readiness
-          </p>
-          <ul className="space-y-2">
-            {[
-              "All boxes packed and sealed",
-              "All boxes labeled — contents and destination room",
-              "Clear a path from rooms to the front door",
-              "Disassemble large furniture if possible",
-              "Reserve elevator or loading zone if applicable",
-            ].map((item) => (
-              <li key={item} className="flex items-center gap-2.5 text-sm text-slate-700">
-                <div className="w-4 h-4 rounded border-2 border-slate-300 flex-shrink-0" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Estimated time */}
-        <div className="bg-navy-50 rounded-xl px-3 py-2.5 flex items-center gap-3">
-          <Clock className="w-4 h-4 text-navy-500 flex-shrink-0" />
-          <div>
-            <p className="text-xs font-semibold text-navy-800">Estimated move time</p>
-            <p className="text-xs text-navy-600">Typical time: 2–4 hours</p>
-          </div>
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -845,10 +975,13 @@ export default function StatusPage() {
           )}
         </div>
 
-        {/* Move prep + Start Move — show before On The Way */}
+        {/* Stage tips — every status */}
+        <StageTips status={move.status} />
+
+        {/* Todo checklist — before crew is on the way */}
         {move.status < 3 && (
           <>
-            <MovePrepSection moveSize={move.moveSize} />
+            <TodoChecklist moveSize={move.moveSize} />
 
             {move.status === 2 && (
               <motion.button
@@ -925,22 +1058,49 @@ export default function StatusPage() {
               initial={{ opacity: 0, scale: 0.97 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
-              className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center"
+              className="space-y-3"
             >
-              <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+              {/* $50 review offer */}
+              <div className="bg-amber-500 rounded-2xl p-5 text-center relative overflow-hidden">
+                <div className="absolute inset-0 opacity-10" style={{
+                  backgroundImage: "radial-gradient(circle at 80% 20%, white 0%, transparent 60%)",
+                }} />
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <Star className="w-5 h-5 text-white fill-white" />
+                </div>
+                <h3 className="text-white font-heading font-bold text-base mb-1">Get $50 off your invoice</h3>
+                <p className="text-amber-100 text-xs leading-relaxed mb-3">
+                  Leave us a Google review and show it to your crew before they leave. We'll take $50 off your balance today.
+                </p>
+                <a
+                  href="https://g.page/r/review"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-white text-amber-700 font-semibold text-sm px-5 py-2.5 rounded-xl cursor-pointer hover:bg-amber-50 transition-colors"
+                >
+                  Leave a Google Review
+                  <ArrowRight className="w-4 h-4" />
+                </a>
+                <p className="text-amber-200 text-[11px] mt-2">Show the screenshot to your crew — $50 off applied immediately</p>
               </div>
-              <h2 className="text-lg font-heading font-bold text-emerald-900">Move Complete</h2>
-              <p className="text-emerald-700 text-sm mt-1">
-                Thank you for choosing One Stop Moving &amp; Storage.
-              </p>
-              <button
-                onClick={() => router.push("/summary")}
-                className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-semibold text-sm py-3 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2"
-              >
-                View Move Summary
-                <ArrowRight className="w-4 h-4" />
-              </button>
+
+              {/* Complete card */}
+              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
+                <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+                </div>
+                <h2 className="text-lg font-heading font-bold text-emerald-900">Move Complete</h2>
+                <p className="text-emerald-700 text-sm mt-1">
+                  Thank you for choosing One Stop Moving &amp; Storage.
+                </p>
+                <button
+                  onClick={() => router.push("/summary")}
+                  className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-semibold text-sm py-3 rounded-xl cursor-pointer transition-all flex items-center justify-center gap-2"
+                >
+                  View Move Summary
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

@@ -24,6 +24,9 @@ import {
   Plus,
   Minus,
   Send,
+  Phone,
+  Copy,
+  Check,
 } from "lucide-react";
 import type { QuoteVisitLineItem } from "@/context/MoveContext";
 import { NotificationBell } from "@/components/NotificationBell";
@@ -181,6 +184,63 @@ function QueueStrip() {
             ? `Tap current job to mark done — client dashboard updates instantly`
             : "Live customer job — advance status with the button below"}
         </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Phone Booking — Deposit Link ----------
+function PhoneBookingCard() {
+  const [name, setName] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    const slug = name.trim()
+      ? name.trim().toLowerCase().replace(/\s+/g, "-")
+      : "new-client";
+    const link = `https://pay.trustmovers.com/deposit/${slug}?amount=150`;
+    navigator.clipboard?.writeText(link).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+        <Phone className="w-4 h-4 text-slate-400" />
+        <p className="text-sm font-semibold text-navy-900">Phone Booking — Send Deposit Link</p>
+      </div>
+      <div className="px-4 py-3">
+        <p className="text-xs text-slate-500 mb-3 leading-relaxed">
+          Booked someone by phone? Enter their name and copy a pre-filled deposit link to send via text or email.
+        </p>
+        <div className="flex gap-2">
+          <div className="flex-1 flex items-center gap-2 border border-slate-200 rounded-xl px-3 py-2.5 focus-within:border-amber-400 transition-colors bg-slate-50">
+            <input
+              type="text"
+              placeholder="Client name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="flex-1 text-sm text-slate-800 outline-none bg-transparent min-w-0"
+            />
+          </div>
+          <button
+            onClick={handleCopy}
+            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold cursor-pointer transition-all flex-shrink-0 ${
+              copied
+                ? "bg-emerald-500 text-white"
+                : "bg-navy-900 hover:bg-navy-800 text-white"
+            }`}
+          >
+            {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied ? "Copied!" : "Copy Link"}
+          </button>
+        </div>
+        {copied && (
+          <p className="text-xs text-emerald-600 mt-2 font-medium">
+            ✓ Link copied — paste it into a text or email to the client
+          </p>
+        )}
       </div>
     </div>
   );
@@ -736,6 +796,9 @@ export default function CrewPage() {
       <div className="px-4 py-5 max-w-lg mx-auto space-y-4">
         {/* Day queue */}
         <QueueStrip />
+
+        {/* Phone booking deposit link */}
+        <PhoneBookingCard />
 
         {/* Quote visit panel */}
         <QuoteVisitPanel />

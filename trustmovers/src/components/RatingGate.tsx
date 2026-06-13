@@ -114,9 +114,20 @@ export function RatingGate() {
             <h1 className="text-center text-white font-heading font-bold text-2xl mb-2">
               How was your move today?
             </h1>
-            <p className="text-center text-navy-300 text-sm mb-10">
+            <p className="text-center text-navy-300 text-sm mb-5">
               Your crew is still here — tap a star to rate them.
             </p>
+
+            {/* $50 incentive */}
+            <div className="bg-amber-500/15 border border-amber-500/30 rounded-2xl px-4 py-3 flex items-center gap-3 mb-6">
+              <div className="w-8 h-8 bg-amber-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+              </div>
+              <div>
+                <p className="text-amber-300 text-sm font-bold">Leave a review, get $50 off</p>
+                <p className="text-amber-500 text-xs mt-0.5">Post on Google and show your crew — we'll apply $50 to your invoice right now.</p>
+              </div>
+            </div>
 
             {/* Stars */}
             <div className="flex justify-center gap-3 mb-4">
@@ -233,11 +244,22 @@ export function RatingGate() {
             </div>
 
             <h2 className="text-center text-white font-heading font-bold text-2xl mb-2">
-              {stars === 5 ? "You're amazing. 🙌" : "Really glad to hear it!"}
+              {stars === 5 ? "You're amazing!" : "Really glad to hear it!"}
             </h2>
-            <p className="text-center text-navy-300 text-sm mb-8">
+            <p className="text-center text-navy-300 text-sm mb-5">
               {HIGH_MESSAGES[stars % HIGH_MESSAGES.length]}
             </p>
+
+            {/* $50 prompt */}
+            <div className="bg-amber-500 rounded-2xl px-4 py-3.5 flex items-center gap-3 mb-4">
+              <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <Star className="w-4 h-4 text-white fill-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-white font-bold text-sm">Get $50 off your invoice</p>
+                <p className="text-amber-100 text-xs mt-0.5">Post a review below, show your crew the screenshot — $50 off, right now.</p>
+              </div>
+            </div>
 
             <div className="space-y-3 mb-8">
               <a
@@ -251,7 +273,7 @@ export function RatingGate() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-bold text-slate-900">Post on Google</p>
-                  <p className="text-xs text-slate-500">Helps neighbors find us</p>
+                  <p className="text-xs text-slate-500">Most impactful · helps neighbors find us</p>
                 </div>
                 <ExternalLink className="w-4 h-4 text-slate-400" />
               </a>
